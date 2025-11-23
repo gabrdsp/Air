@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "deploy": "rm -rf out && next build && touch out/.nojekyll && gh-pages -d out -t true"
+    "deploy": "rm -rf out && npm run build && touch out/.nojekyll && gh-pages -d out -t true"
   },
   "dependencies": {
     "next": "14.0.0",
