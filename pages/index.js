@@ -1,272 +1,463 @@
-import { useState, useEffect } from 'react';
-import { X, Camera, FileText } from 'lucide-react';
-import { fileToBase64 } from '../lib/storage';
+// pages/index.js
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit3 } from 'lucide-react';
+import { saveToStorage, loadFromStorage } from '../lib/storage';
+import { DEFAULT_BOOKS, DEFAULT_USERS, DEFAULT_TOP_PICK } from '../data/initialData';
 
-export const ImageUpload = ({ currentImage, onImageChange, label, className }) => {
-    const handleFile = async (e) => {
-        const file = e.target.files[0];
-        if (file) onImageChange(await fileToBase64(file));
+// Componentes
+import { TopNavbar, Sidebar } from '../components/Navigation';
+import { BookGridItem, BookDetail, Reader } from '../components/Book';
+import { ProfileView } from '../components/Profile';
+import { LoginView } from '../components/Auth';
+import {
+  AdminBookModal,
+  AdminNotificationModal,
+  AdminTopPickModal,
+} from '../components/Modals';
+
+function AirApp() {
+  const [isClient, setIsClient] = useState(false);
+
+  // --- ESTADOS GLOBAIS ---
+  const [books, setBooks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [topPick, setTopPick] = useState(null);
+
+  // --- ESTADOS DE SESSÃO / UI ---
+  const [currentUser, setCurrentUser] = useState(null);
+  const [view, setView] = useState('login'); // 'login', 'home', 'detail', 'reader', 'profile'
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('All');
+
+  // --- MODAIS ---
+  const [isBookModalOpen, setBookModalOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
+  const [isNotifModalOpen, setNotifModalOpen] = useState(false);
+  const [isTopPickModalOpen, setTopPickModalOpen] = useState(false);
+
+  // Carregar dados do localStorage e sessão
+  useEffect(() => {
+    setIsClient(true);
+
+    const loadedBooks = loadFromStorage('books', DEFAULT_BOOKS);
+    const loadedUsers = loadFromStorage('users', DEFAULT_USERS);
+    const loadedNotifications = loadFromStorage('notifications', [
+      {
+        id: 1,
+        text: 'Bem-vindo ao Air!',
+        date: new Date().toLocaleDateString(),
+        read: false,
+      },
+    ]);
+    const loadedTopPick = loadFromStorage('topPick', DEFAULT_TOP_PICK);
+
+    setBooks(loadedBooks);
+    setUsers(loadedUsers);
+    setNotifications(loadedNotifications);
+    setTopPick(loadedTopPick);
+
+    const savedSessionId = typeof window !== 'undefined'
+      ? localStorage.getItem('air_session')
+      : null;
+
+    if (savedSessionId) {
+      const found = loadedUsers.find((u) => u.id === savedSessionId);
+      if (found) {
+        setCurrentUser(found);
+        setView('home');
+      }
+    }
+  }, []);
+
+  // Persistência
+  useEffect(() => {
+    if (isClient) saveToStorage('books', books);
+  }, [books, isClient]);
+
+  useEffect(() => {
+    if (isClient) saveToStorage('users', users);
+  }, [users, isClient]);
+
+  useEffect(() => {
+    if (isClient) saveToStorage('notifications', notifications);
+  }, [notifications, isClient]);
+
+  useEffect(() => {
+    if (isClient) saveToStorage('topPick', topPick);
+  }, [topPick, isClient]);
+
+  // --- AUTENTICAÇÃO ---
+
+  const handleLogin = (username, password, onError) => {
+    const user = users.find(
+      (u) => u.username === username && u.password === password
+    );
+    if (user) {
+      setCurrentUser(user);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('air_session', user.id);
+      }
+      setView('home');
+    } else {
+      onError('Credenciais inválidas');
+    }
+  };
+
+  const handleRegister = (formData, onError) => {
+    if (users.find((u) => u.username === formData.username)) {
+      return onError('Usuário já existe');
+    }
+
+    const newUser = {
+      id: Date.now().toString(),
+      ...formData,
+      role: 'user',
+      avatar: 'https://placehold.co/150x150?text=User',
+      bio: 'Leitor dedicado.',
+      stats: {
+        booksReadYear: 0,
+        pagesRead: 0,
+        currentStreak: 1,
+        totalTime: 0,
+      },
+      weeklyGoal: { current: 0, target: 5 },
+      history: [],
+      favorites: [],
     };
-    return (
-        <div className={`relative group cursor-pointer ${className}`}>
-            <img
-                src={currentImage || "https://placehold.co/300x400?text=Img"}
-                className="w-full h-full object-cover rounded-lg border"
-            />
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-lg">
-                <Camera className="text-white" />
-            </div>
-            <input
-                type="file"
-                accept="image/*"
-                onChange={handleFile}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-            />
-        </div>
-    );
-};
 
-export const Modal = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="font-bold text-lg">{title}</h3>
-                    <button onClick={onClose}>
-                        <X size={20} />
-                    </button>
-                </div>
-                <div className="p-6 overflow-y-auto">{children}</div>
-            </div>
-        </div>
-    );
-};
+    setUsers((prev) => [...prev, newUser]);
+    setCurrentUser(newUser);
 
-export const AdminBookModal = ({ isOpen, onClose, book, onSave }) => {
-    // agora com pdfUrl no estado
-    const [formData, setFormData] = useState({
-        title: '',
-        author: '',
-        genres: '',
-        desc: '',
-        cover: '',
-        pages: 0,
-        pdfUrl: ''
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('air_session', newUser.id);
+    }
+
+    setView('home');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('air_session');
+    }
+    setView('login');
+  };
+
+  // --- LIVROS ---
+
+  const handleSaveBook = (bookData) => {
+    setBooks((prevBooks) => {
+      if (editingBook) {
+        // editar
+        return prevBooks.map((b) =>
+          b.id === editingBook.id ? { ...b, ...bookData, id: b.id } : b
+        );
+      } else {
+        // novo
+        return [
+          ...prevBooks,
+          {
+            ...bookData,
+            id: Date.now(),
+            rating: 0,
+          },
+        ];
+      }
     });
 
-    useEffect(() => {
-        if (book) {
-            setFormData({
-                ...book,
-                genres: Array.isArray(book.genres) ? book.genres.join(', ') : (book.genres || ''),
-                pdfUrl: book.pdfUrl || ''
-            });
-        } else {
-            setFormData({
-                title: '',
-                author: '',
-                genres: '',
-                desc: '',
-                cover: '',
-                pages: 100,
-                pdfUrl: ''
-            });
-        }
-    }, [book, isOpen]);
+    setBookModalOpen(false);
+    setEditingBook(null);
+  };
 
-    const handleChange = (e) =>
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+  const handleDeleteBook = (id) => {
+    console.log('Livro excluído com ID:', id);
+    setBooks((prev) => prev.filter((b) => b.id !== id));
+    setView('home');
+  };
 
-    const handlePdfUpload = async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const base64 = await fileToBase64(file);
-        setFormData((prev) => ({ ...prev, pdfUrl: base64 }));
+  const handleFinishBook = () => {
+    if (!selectedBook || !currentUser) return;
+
+    const updatedUser = { ...currentUser };
+
+    updatedUser.stats = {
+      ...updatedUser.stats,
+      booksReadYear: updatedUser.stats.booksReadYear + 1,
+      pagesRead:
+        updatedUser.stats.pagesRead +
+        (parseInt(selectedBook.pages, 10) || 100),
+      totalTime: updatedUser.stats.totalTime + 120,
     };
 
-    const handleSave = () => {
-        const genresArray = formData.genres
-            .split(',')
-            .map((g) => g.trim())
-            .filter(Boolean);
-
-        onSave({
-            ...formData,
-            genres: genresArray
-        });
-        onClose();
+    updatedUser.weeklyGoal = {
+      ...updatedUser.weeklyGoal,
+      current: updatedUser.weeklyGoal.current + 1,
     };
 
+    updatedUser.history = [
+      selectedBook.id,
+      ...updatedUser.history.filter((id) => id !== selectedBook.id),
+    ];
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+    );
+    setCurrentUser(updatedUser);
+    setView('home');
+  };
+
+  const handleToggleFavorite = (bookId) => {
+    if (!currentUser) return;
+
+    let favs = [...currentUser.favorites];
+    if (favs.includes(bookId)) {
+      favs = favs.filter((id) => id !== bookId);
+    } else {
+      if (favs.length >= 3) {
+        console.log('Limite de 3 favoritos atingido!');
+        return;
+      }
+      favs.push(bookId);
+    }
+
+    const updatedUser = { ...currentUser, favorites: favs };
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+    );
+    setCurrentUser(updatedUser);
+  };
+
+  // --- PERFIL / ADMIN ---
+
+  const handleUpdateProfile = (data) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...data };
+    setUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? updated : u))
+    );
+    setCurrentUser(updated);
+  };
+
+  const handleSendNotification = (text) => {
+    setNotifications((prev) => [
+      {
+        id: Date.now(),
+        text,
+        date: new Date().toLocaleDateString(),
+        read: false,
+      },
+      ...prev,
+    ]);
+  };
+
+  const markNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  // --- FILTRO ---
+
+  const uniqueGenres = Array.from(
+    new Set(books.flatMap((b) => b.genres || []))
+  ).sort();
+
+  const filteredBooks = books.filter((b) => {
+    const matchSearch = b.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const matchGenre =
+      filter === 'All' || (b.genres && b.genres.includes(filter));
+    return matchSearch && matchGenre;
+  });
+
+  const isAdmin = currentUser?.role === 'admin';
+
+  // --- GUARD CLAUSES ---
+
+  if (!isClient) return null;
+
+  if (view === 'reader') {
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={book ? "Edit Book" : "Add Book"}>
-            <div className="space-y-4">
-                <div className="h-48 w-32 mx-auto">
-                    <ImageUpload
-                        currentImage={formData.cover}
-                        onImageChange={(v) => setFormData({ ...formData, cover: v })}
-                        className="h-full"
-                    />
-                </div>
+      <Reader
+        book={selectedBook}
+        onBack={() => setView('detail')}
+        onFinish={handleFinishBook}
+      />
+    );
+  }
 
-                <input
-                    name="title"
-                    placeholder="Title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded text-sm"
-                />
+  if (!currentUser) {
+    return (
+      <LoginView
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+      />
+    );
+  }
 
-                <input
-                    name="author"
-                    placeholder="Author"
-                    value={formData.author}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded text-sm"
-                />
+  // --- RENDER PADRÃO (home/detail/profile) ---
 
-                <input
-                    name="genres"
-                    placeholder="Genres (comma separated)"
-                    value={formData.genres}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded text-sm"
-                />
+  return (
+    <div className="min-h-screen bg-[#F9FAFB] font-sans text-slate-900">
+      {/* Modais */}
+      <AdminBookModal
+        isOpen={isBookModalOpen}
+        onClose={() => setBookModalOpen(false)}
+        book={editingBook}
+        onSave={handleSaveBook}
+      />
 
-                <textarea
-                    name="desc"
-                    placeholder="Description"
-                    value={formData.desc}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded h-24 text-sm"
-                />
+      <AdminNotificationModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+        onSend={handleSendNotification}
+      />
 
-                <input
-                    name="pages"
-                    type="number"
-                    placeholder="Pages"
-                    value={formData.pages}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded text-sm"
-                />
+      <AdminTopPickModal
+        isOpen={isTopPickModalOpen}
+        onClose={() => setTopPickModalOpen(false)}
+        topPick={topPick}
+        onSave={setTopPick}
+      />
 
-                {/* Área harmonizada para anexar PDF */}
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-700">
-                        Arquivo PDF do livro
+      {/* Navbar */}
+      <TopNavbar
+        user={currentUser}
+        setView={setView}
+        search={search}
+        onSearch={setSearch}
+        onLogout={handleLogout}
+        notifications={notifications}
+        onReadNotifications={markNotificationsRead}
+        isAdmin={isAdmin}
+        onOpenNotifyModal={() => setNotifModalOpen(true)}
+      />
+
+      <div className="flex max-w-[1600px] mx-auto pt-6">
+        {/* Sidebar */}
+        <Sidebar
+          user={currentUser}
+          activeFilter={filter}
+          setActiveFilter={setFilter}
+          setView={setView}
+          genresList={uniqueGenres}
+          filter={filter}
+        />
+
+        <main className="flex-1 lg:ml-64 px-6 pb-10 w-full">
+          {/* HOME */}
+          {view === 'home' && (
+            <>
+              {/* Banner Top Pick */}
+              {!search && topPick && (
+                <div className="mb-10 bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl flex flex-col md:flex-row items-center gap-8">
+                  <div className="relative z-10 flex-1">
+                    <h2 className="text-3xl font-bold mb-2">
+                      {topPick.bannerTitle}
+                    </h2>
+                    <p className="text-slate-400 text-sm mb-6 max-w-lg">
+                      {topPick.bannerDesc}
                     </p>
-
-                    <div className="border border-dashed border-slate-300 rounded-xl px-3 py-3 bg-slate-50 flex items-center justify-between gap-3">
-                        <div className="text-xs text-slate-500">
-                            {formData.pdfUrl ? (
-                                <>
-                                    <span className="block font-semibold text-emerald-600">
-                                        PDF anexado
-                                    </span>
-                                    <span className="block text-[11px] text-slate-500">
-                                        Ao salvar, este arquivo será usado no leitor pelos usuários.
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="block font-semibold text-slate-700">
-                                        Nenhum arquivo selecionado
-                                    </span>
-                                    <span className="block text-[11px] text-slate-500">
-                                        Selecione um PDF para que este livro seja lido dentro da plataforma.
-                                    </span>
-                                </>
-                            )}
-                        </div>
-
-                        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 text-xs font-semibold text-blue-700 hover:bg-blue-100 cursor-pointer">
-                            <FileText size={14} />
-                            <span>{formData.pdfUrl ? 'Trocar PDF' : 'Anexar PDF'}</span>
-                            <input
-                                type="file"
-                                accept="application/pdf"
-                                onChange={handlePdfUpload}
-                                className="hidden"
-                            />
-                        </label>
-                    </div>
-                </div>
-
-                <button
-                    onClick={handleSave}
-                    className="w-full bg-blue-900 text-white py-2 rounded font-bold text-sm hover:bg-blue-800 transition"
-                >
-                    Save
-                </button>
-            </div>
-        </Modal>
-    );
-};
-
-export const AdminTopPickModal = ({ isOpen, onClose, topPick, onSave }) => {
-    const [data, setData] = useState({ ...topPick });
-    useEffect(() => {
-        if (topPick) setData({ ...topPick });
-    }, [topPick, isOpen]);
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Edit Banner">
-            <div className="space-y-4">
-                <div className="h-32 w-full">
-                    <ImageUpload
-                        currentImage={data.bannerCover}
-                        onImageChange={(v) => setData({ ...data, bannerCover: v })}
-                        className="h-full"
+                    <button
+                      onClick={() => {
+                        const targetBook =
+                          books.find((b) => b.id === topPick.id) ||
+                          books[0];
+                        setSelectedBook(targetBook);
+                        setView('detail');
+                      }}
+                      className="px-6 py-2.5 bg-white text-slate-900 rounded-full text-sm font-bold hover:bg-blue-50 transition"
+                    >
+                      Ler Agora
+                    </button>
+                  </div>
+                  <div className="relative z-10 w-32 shrink-0 rotate-3">
+                    <img
+                      src={topPick.bannerCover}
+                      className="rounded-lg shadow-2xl border border-white/10 w-full"
+                      alt="Capa"
                     />
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setTopPickModalOpen(true)}
+                      className="absolute top-4 right-4 bg-white/10 p-2 rounded-full hover:bg-white/20 transition"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                  )}
                 </div>
-                <input
-                    value={data.bannerTitle}
-                    onChange={(e) => setData({ ...data, bannerTitle: e.target.value })}
-                    className="w-full p-2 border rounded text-sm"
-                    placeholder="Title"
-                />
-                <textarea
-                    value={data.bannerDesc}
-                    onChange={(e) => setData({ ...data, bannerDesc: e.target.value })}
-                    className="w-full p-2 border rounded text-sm"
-                    placeholder="Description"
-                />
-                <button
-                    onClick={() => {
-                        onSave(data);
-                        onClose();
-                    }}
-                    className="w-full bg-blue-900 text-white py-2 rounded font-bold text-sm hover:bg-blue-800 transition"
-                >
-                    Update
-                </button>
-            </div>
-        </Modal>
-    );
-};
+              )}
 
-export const AdminNotificationModal = ({ isOpen, onClose, onSend }) => {
-    const [text, setText] = useState('');
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Send Notification">
-            <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="w-full p-2 border rounded h-32 mb-4 text-sm"
-                placeholder="Message..."
+              {/* Cabeçalho da grade */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {search ? `Resultados: "${search}"` : 'Biblioteca'}
+                </h2>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setEditingBook(null);
+                      setBookModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700"
+                  >
+                    <Plus size={16} /> Adicionar
+                  </button>
+                )}
+              </div>
+
+              {/* Grade de livros */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-5 gap-y-8">
+                {filteredBooks.map((book) => (
+                  <BookGridItem
+                    key={book.id}
+                    book={book}
+                    onClick={(b) => {
+                      setSelectedBook(b);
+                      setView('detail');
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* DETALHE DO LIVRO */}
+          {view === 'detail' && selectedBook && (
+            <BookDetail
+              book={selectedBook}
+              onRead={() => setView('reader')}
+              onBack={() => setView('home')}
+              user={currentUser}
+              onToggleFavorite={handleToggleFavorite}
+              isAdmin={isAdmin}
+              onDelete={handleDeleteBook}
+              onEdit={(b) => {
+                setEditingBook(b);
+                setBookModalOpen(true);
+              }}
             />
-            <button
-                onClick={() => {
-                    onSend(text);
-                    setText('');
-                    onClose();
-                }}
-                className="w-full bg-blue-900 text-white py-2 rounded font-bold text-sm hover:bg-blue-800 transition"
-            >
-                Send
-            </button>
-        </Modal>
-    );
-};
+          )}
+
+          {/* PERFIL */}
+          {view === 'profile' && (
+            <ProfileView
+              user={currentUser}
+              updateUser={handleUpdateProfile}
+              onBookClick={(b) => {
+                setSelectedBook(b);
+                setView('detail');
+              }}
+              books={books}
+            />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default AirApp;

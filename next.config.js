@@ -9,7 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-
+  
   basePath: isProd ? '/Air' : '',
   assetPrefix: isProd ? '/Air/' : '',
 };
