@@ -5,8 +5,9 @@
   "scripts": {
   "dev": "next dev",
   "build": "next build",
+  "build:gh-pages": "cross-env DEPLOY_TARGET=gh-pages next build",
   "start": "next start",
-  "deploy": "rimraf out && npm run build && shx touch out/.nojekyll && gh-pages -d out"
+  "deploy": "rimraf out && npm run build:gh-pages && shx touch out/.nojekyll && gh-pages -d out"
 },
   "dependencies": {
     "next": "14.0.0",
@@ -22,6 +23,7 @@
     "tailwindcss": "^3.3.5",
     "gh-pages": "^6.1.0",
     "rimraf": "^6.0.0",
-    "shx": "^0.3.4"
+    "shx": "^0.3.4",
+    "cross-env": "^7.0.3"
   }
 }
