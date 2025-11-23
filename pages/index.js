@@ -4,7 +4,6 @@ import { Plus, Edit3 } from 'lucide-react';
 import { saveToStorage, loadFromStorage } from '../lib/storage';
 import { DEFAULT_BOOKS, DEFAULT_USERS, DEFAULT_TOP_PICK } from '../data/initialData';
 
-// Componentes
 import { TopNavbar, Sidebar } from '../components/Navigation';
 import { BookGridItem, BookDetail, Reader } from '../components/Book';
 import { ProfileView } from '../components/Profile';
@@ -16,13 +15,18 @@ import {
 } from '../components/Modals';
 
 function AirApp() {
-  const [isClient, setIsClient] = useState(false);
-
-  // --- ESTADOS GLOBAIS ---
-  const [books, setBooks] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [topPick, setTopPick] = useState(null);
+  // --- ESTADOS GLOBAIS (com defaults para SSR/export) ---
+  const [books, setBooks] = useState(DEFAULT_BOOKS);
+  const [users, setUsers] = useState(DEFAULT_USERS);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      text: 'Bem-vindo ao Air!',
+      date: new Date().toLocaleDateString(),
+      read: false,
+    },
+  ]);
+  const [topPick, setTopPick] = useState(DEFAULT_TOP_PICK);
 
   // --- ESTADOS DE SESSÃO / UI ---
   const [currentUser, setCurrentUser] = useState(null);
@@ -37,20 +41,14 @@ function AirApp() {
   const [isNotifModalOpen, setNotifModalOpen] = useState(false);
   const [isTopPickModalOpen, setTopPickModalOpen] = useState(false);
 
-  // Carregar dados do localStorage e sessão
+  // --- CARREGAR DADOS DO LOCALSTORAGE NO CLIENTE ---
   useEffect(() => {
-    setIsClient(true);
-
     const loadedBooks = loadFromStorage('books', DEFAULT_BOOKS);
     const loadedUsers = loadFromStorage('users', DEFAULT_USERS);
-    const loadedNotifications = loadFromStorage('notifications', [
-      {
-        id: 1,
-        text: 'Bem-vindo ao Air!',
-        date: new Date().toLocaleDateString(),
-        read: false,
-      },
-    ]);
+    const loadedNotifications = loadFromStorage(
+      'notifications',
+      notifications
+    );
     const loadedTopPick = loadFromStorage('topPick', DEFAULT_TOP_PICK);
 
     setBooks(loadedBooks);
@@ -58,35 +56,35 @@ function AirApp() {
     setNotifications(loadedNotifications);
     setTopPick(loadedTopPick);
 
-    const savedSessionId = typeof window !== 'undefined'
-      ? localStorage.getItem('air_session')
-      : null;
-
-    if (savedSessionId) {
-      const found = loadedUsers.find((u) => u.id === savedSessionId);
-      if (found) {
-        setCurrentUser(found);
-        setView('home');
+    if (typeof window !== 'undefined') {
+      const savedSessionId = localStorage.getItem('air_session');
+      if (savedSessionId) {
+        const found = loadedUsers.find((u) => u.id === savedSessionId);
+        if (found) {
+          setCurrentUser(found);
+          setView('home');
+        }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persistência
+  // --- PERSISTÊNCIA ---
   useEffect(() => {
-    if (isClient) saveToStorage('books', books);
-  }, [books, isClient]);
+    saveToStorage('books', books);
+  }, [books]);
 
   useEffect(() => {
-    if (isClient) saveToStorage('users', users);
-  }, [users, isClient]);
+    saveToStorage('users', users);
+  }, [users]);
 
   useEffect(() => {
-    if (isClient) saveToStorage('notifications', notifications);
-  }, [notifications, isClient]);
+    saveToStorage('notifications', notifications);
+  }, [notifications]);
 
   useEffect(() => {
-    if (isClient) saveToStorage('topPick', topPick);
-  }, [topPick, isClient]);
+    saveToStorage('topPick', topPick);
+  }, [topPick]);
 
   // --- AUTENTICAÇÃO ---
 
@@ -274,9 +272,7 @@ function AirApp() {
 
   const isAdmin = currentUser?.role === 'admin';
 
-  // --- GUARD CLAUSES ---
-
-  if (!isClient) return null;
+  // --- RENDERS ESPECIAIS ---
 
   if (view === 'reader') {
     return (
@@ -297,7 +293,7 @@ function AirApp() {
     );
   }
 
-  // --- RENDER PADRÃO (home/detail/profile) ---
+  // --- RENDER PADRÃO ---
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans text-slate-900">
