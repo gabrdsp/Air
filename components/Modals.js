@@ -82,11 +82,22 @@ export const AdminBookModal = ({ isOpen, onClose, book, onSave }) => {
         });
 
     const handlePdfUpload = async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const base64 = await fileToBase64(file);
-        setFormData((prev) => ({ ...prev, pdfUrl: base64 }));
-    };
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  try {
+    // sem limite de tamanho aqui
+    const base64 = await fileToBase64(file);
+    setFormData((prev) => ({ ...prev, pdfUrl: base64 }));
+  } catch (err) {
+    console.error('Erro ao ler arquivo PDF:', err);
+    alert(
+      err?.message ||
+        'Não foi possível ler o PDF. Tente outro arquivo ou verifique o documento.'
+    );
+  }
+};
+
 
     const handleSave = () => {
         const genresArray = formData.genres
@@ -142,15 +153,6 @@ export const AdminBookModal = ({ isOpen, onClose, book, onSave }) => {
                     value={formData.desc}
                     onChange={handleChange}
                     className="w-full p-2 border rounded h-24 text-sm"
-                />
-
-                <input
-                    name="pages"
-                    type="number"
-                    placeholder="Pages"
-                    value={formData.pages}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded text-sm"
                 />
 
                 {/* Área harmonizada para anexar PDF */}

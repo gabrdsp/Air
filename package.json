@@ -7,7 +7,7 @@
   "build": "next build",
   "build:gh-pages": "cross-env DEPLOY_TARGET=gh-pages next build",
   "start": "next start",
-  "deploy": "rimraf out && npm run build:gh-pages && shx touch out/.nojekyll && gh-pages -d out"
+  "deploy": "rimraf out && npm run build:gh-pages && gh-pages -d out --nojekyll"
 },
   "dependencies": {
     "next": "14.0.0",

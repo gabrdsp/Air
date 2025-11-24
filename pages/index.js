@@ -45,10 +45,7 @@ function AirApp() {
   useEffect(() => {
     const loadedBooks = loadFromStorage('books', DEFAULT_BOOKS);
     const loadedUsers = loadFromStorage('users', DEFAULT_USERS);
-    const loadedNotifications = loadFromStorage(
-      'notifications',
-      notifications
-    );
+    const loadedNotifications = loadFromStorage('notifications', notifications);
     const loadedTopPick = loadFromStorage('topPick', DEFAULT_TOP_PICK);
 
     setBooks(loadedBooks);
@@ -180,12 +177,11 @@ function AirApp() {
 
     const updatedUser = { ...currentUser };
 
+    // Atualiza estatísticas sem depender de "pages"
     updatedUser.stats = {
       ...updatedUser.stats,
       booksReadYear: updatedUser.stats.booksReadYear + 1,
-      pagesRead:
-        updatedUser.stats.pagesRead +
-        (parseInt(selectedBook.pages, 10) || 100),
+      pagesRead: updatedUser.stats.pagesRead, // se quiser somar algo fixo, pode mudar aqui
       totalTime: updatedUser.stats.totalTime + 120,
     };
 
@@ -203,7 +199,9 @@ function AirApp() {
       prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
     );
     setCurrentUser(updatedUser);
-    setView('home');
+
+    // Após concluir leitura, volta para a página de detalhes (para permitir avaliar)
+    setView('detail');
   };
 
   const handleToggleFavorite = (bookId) => {
@@ -226,6 +224,17 @@ function AirApp() {
       prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
     );
     setCurrentUser(updatedUser);
+  };
+
+  const handleRateBook = (bookId, rating) => {
+    setBooks((prevBooks) =>
+      prevBooks.map((b) =>
+        b.id === bookId ? { ...b, rating } : b
+      )
+    );
+    setSelectedBook((prev) =>
+      prev && prev.id === bookId ? { ...prev, rating } : prev
+    );
   };
 
   // --- PERFIL / ADMIN ---
@@ -359,8 +368,7 @@ function AirApp() {
                     <button
                       onClick={() => {
                         const targetBook =
-                          books.find((b) => b.id === topPick.id) ||
-                          books[0];
+                          books.find((b) => b.id === topPick.id) || books[0];
                         setSelectedBook(targetBook);
                         setView('detail');
                       }}
@@ -435,6 +443,7 @@ function AirApp() {
                 setEditingBook(b);
                 setBookModalOpen(true);
               }}
+              onRate={handleRateBook}
             />
           )}
 
