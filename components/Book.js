@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Star, ChevronLeft, BookOpen, Heart, Edit3, Trash2 } from 'lucide-react';
+// components/Book.js
+import {
+  Star,
+  ChevronLeft,
+  BookOpen,
+  Heart,
+  Edit3,
+  Trash2,
+} from "lucide-react";
 
 export const BookGridItem = ({ book, onClick }) => (
   <div
@@ -23,8 +30,8 @@ export const BookGridItem = ({ book, onClick }) => (
         </p>
       </div>
       <div className="flex items-center text-xs font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />{' '}
-        {book.rating ?? 0}
+        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />{" "}
+        {book.rating}
       </div>
     </div>
   </div>
@@ -39,18 +46,8 @@ export const BookDetail = ({
   isAdmin,
   onDelete,
   onEdit,
-  onRate,
 }) => {
-  const isFav = user?.favorites?.includes(book.id);
-  const [hoverRating, setHoverRating] = useState(null);
-
-  const currentRating = typeof book.rating === 'number' ? book.rating : 0;
-
-  const handleRateClick = (value) => {
-    if (onRate) {
-      onRate(book.id, value);
-    }
-  };
+  const isFav = user.favorites.includes(book.id);
 
   return (
     <div className="max-w-5xl mx-auto animate-fade-in pt-4">
@@ -60,6 +57,7 @@ export const BookDetail = ({
       >
         <ChevronLeft size={16} className="mr-1" /> Back
       </button>
+
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-[280px] shrink-0 relative group">
           <img
@@ -84,6 +82,7 @@ export const BookDetail = ({
             </div>
           )}
         </div>
+
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3">
             {book.genres?.map((g) => (
@@ -97,74 +96,38 @@ export const BookDetail = ({
             <div className="flex items-center text-amber-500 gap-1">
               <Star size={14} fill="currentColor" />
               <span className="text-sm font-bold text-slate-900">
-                {currentRating > 0 ? `${currentRating.toFixed(1)}` : '0.0'}
+                {book.rating}
               </span>
             </div>
           </div>
+
           <h1 className="text-4xl font-black text-slate-900 mb-2">
             {book.title}
           </h1>
           <p className="text-lg text-slate-500 mb-6">by {book.author}</p>
-          <p className="text-slate-600 leading-relaxed mb-8">{book.desc}</p>
-          <div className="flex flex-wrap gap-4 items-center">
+
+          <p className="text-slate-600 leading-relaxed mb-8">
+            {book.desc}
+          </p>
+
+          <div className="flex gap-4">
             <button
               onClick={() => onRead(book)}
               className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg flex items-center"
             >
               <BookOpen size={18} className="mr-2" /> Read Now
             </button>
+
             <button
               onClick={() => onToggleFavorite(book.id)}
               className={`p-3 border rounded-xl transition ${
                 isFav
-                  ? 'border-red-200 bg-red-50 text-red-500'
-                  : 'border-gray-200 text-gray-400'
+                  ? "border-red-200 bg-red-50 text-red-500"
+                  : "border-gray-200 text-gray-400"
               }`}
             >
-              <Heart
-                size={20}
-                fill={isFav ? 'currentColor' : 'none'}
-              />
+              <Heart size={20} fill={isFav ? "currentColor" : "none"} />
             </button>
-          </div>
-
-          {/* Avaliação por estrelas */}
-          <div className="mt-6">
-            <p className="text-xs font-semibold text-slate-500 mb-1">
-              Avalie este livro
-            </p>
-            <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5].map((value) => {
-                const active =
-                  hoverRating != null
-                    ? value <= hoverRating
-                    : value <= currentRating;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => handleRateClick(value)}
-                    onMouseEnter={() => setHoverRating(value)}
-                    onMouseLeave={() => setHoverRating(null)}
-                    className="p-1"
-                  >
-                    <Star
-                      size={20}
-                      className={
-                        active
-                          ? 'text-amber-400 fill-amber-400'
-                          : 'text-slate-300'
-                      }
-                    />
-                  </button>
-                );
-              })}
-              <span className="text-xs text-slate-500 ml-2">
-                {currentRating > 0
-                  ? `${currentRating.toFixed(1)} / 5`
-                  : 'Ainda não avaliado'}
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -172,73 +135,47 @@ export const BookDetail = ({
   );
 };
 
-// Converte dataURL -> blob URL para o PDF (mais compatível com navegadores)
-const buildPdfSrc = (rawUrl) => {
-  if (!rawUrl) return '';
-  if (!rawUrl.startsWith('data:application/pdf')) {
-    // já é uma URL "normal" ou blob
-    return rawUrl;
-  }
-
-  try {
-    const base64 = rawUrl.split(',')[1];
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/pdf' });
-    return URL.createObjectURL(blob);
-  } catch (err) {
-    console.error('Erro ao converter dataURL de PDF para blob URL:', err);
-    return rawUrl;
-  }
-};
-
 export const Reader = ({ book, onBack, onFinish }) => {
-  const [pdfSrc, setPdfSrc] = useState('');
-
-  useEffect(() => {
-    if (!book || !book.pdfUrl) {
-      setPdfSrc('');
-      return;
-    }
-    const url = buildPdfSrc(book.pdfUrl);
-    setPdfSrc(url);
-
-    return () => {
-      if (url && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-      }
-    };
-  }, [book]);
-
   if (!book) return null;
 
-  const hasPdf = !!pdfSrc;
+  const hasImagePages =
+    Array.isArray(book.pageImages) && book.pageImages.length > 0;
+
+  const hasPdf =
+    !hasImagePages &&
+    typeof book.pdfUrl === "string" &&
+    book.pdfUrl.length > 0;
+
+  const mainAuthor = Array.isArray(book.authors)
+    ? book.authors.join(", ")
+    : book.author;
+
+  // se for PDF, escondemos a toolbar com fragmento na URL
+  const pdfSrc = hasPdf
+    ? `${book.pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`
+    : null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-zinc-950 text-white flex flex-col">
-      {/* Barra superior */}
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-slate-900/80 backdrop-blur-sm">
+      {/* HEADER – segue o padrão visual do app */}
+      <header className="bg-white shadow-sm border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-full hover:bg-white/10 transition"
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition"
           >
             <ChevronLeft size={18} />
           </button>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <BookOpen size={16} className="text-blue-400" />
-              <h2 className="text-sm font-semibold line-clamp-1">
-                {book.title}
-              </h2>
-            </div>
-            {book.author && (
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                por {book.author}
+            <span className="text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-400">
+              Air Library • Reader
+            </span>
+            <h2 className="text-sm sm:text-base font-semibold text-slate-900 truncate max-w-xs sm:max-w-md">
+              {book.title}
+            </h2>
+            {mainAuthor && (
+              <p className="text-[11px] text-slate-500 truncate max-w-xs sm:max-w-md">
+                {mainAuthor}
               </p>
             )}
           </div>
@@ -246,51 +183,89 @@ export const Reader = ({ book, onBack, onFinish }) => {
 
         <button
           onClick={onFinish}
-          className="inline-flex items-center px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-semibold tracking-wide"
+          className="inline-flex items-center px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white tracking-wide"
         >
           Concluir leitura
         </button>
       </header>
 
-      {/* Área principal */}
-      <main className="flex-1 flex justify-center items-stretch px-3 sm:px-4 pb-6 pt-4 overflow-hidden">
-        <div className="w-full max-w-6xl flex flex-col gap-3">
-          {/* Container do PDF */}
-          <div className="flex-1 bg-zinc-900/90 rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden">
-            {hasPdf ? (
-              <iframe
-                src={pdfSrc}
-                title={book.title}
-                className="w-full h-full min-h-[65vh] md:min-h-[75vh]"
-                style={{ border: 'none' }}
-              />
-            ) : (
-              <div className="w-full h-full min-h-[65vh] md:min-h-[75vh] flex flex-col items-center justify-center gap-4">
-                <div className="w-full max-w-md mx-auto space-y-3">
-                  <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-                    <p className="text-sm text-zinc-200 font-medium">
-                      Nenhum PDF anexado a este livro.
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-1.5">
-                      Para que a leitura funcione, edite este livro no painel
-                      do administrador e anexe um arquivo PDF. O conteúdo de
-                      leitura será exatamente o PDF enviado.
-                    </p>
-                  </div>
-                </div>
-              </div>
+      {/* CONTEÚDO */}
+      <main className="flex-1 overflow-y-auto bg-[#F3F4F6]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          {/* Título central e info da coleção */}
+          <div className="text-center mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">
+              {book.title}
+            </h1>
+            {book.collection && (
+              <p className="text-xs sm:text-sm text-slate-500">
+                All volumes are in{" "}
+                <span className="text-blue-600 font-semibold">
+                  {book.collection}
+                </span>
+              </p>
             )}
           </div>
 
-          {/* Rodapé de dica (sem contagem de páginas) */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-zinc-400 px-1">
-            <span className="uppercase tracking-[0.18em] text-zinc-500">
-              Modo de leitura • PDF completo
-            </span>
-            <span className="opacity-80">
-              Use os controles do visualizador de PDF (zoom, rolagem, páginas)
-              do seu navegador para navegar pela HQ/livro.
-            </span>
+          {/* ÁREA DE LEITURA – container do tamanho das imagens */}
+          {hasImagePages ? (
+            <div className="flex justify-center">
+              {/* esse wrapper se ajusta exatamente ao tamanho das imagens */}
+              <div className="inline-block">
+                {book.pageImages.map((src, index) => {
+                  const safeSrc = encodeURI(src);
+                  return (
+                    <img
+                      key={index}
+                      src={safeSrc}
+                      alt={`${book.title} – página ${index + 1}`}
+                      className="block max-w-full h-auto"
+                      loading={index === 0 ? "eager" : "lazy"}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ) : hasPdf ? (
+            // FALLBACK: ainda suporta PDF se algum livro antigo usar
+            <div className="flex justify-center">
+              <div className="inline-block">
+                <object
+                  data={pdfSrc}
+                  type="application/pdf"
+                  className="w-full h-[80vh]"
+                >
+                  <iframe
+                    src={pdfSrc}
+                    title={book.title}
+                    className="w-full h-[80vh]"
+                    style={{ border: "none" }}
+                  />
+                  <div className="w-full h-[80vh] flex items-center justify-center p-6">
+                    <p className="text-xs text-slate-400 text-center max-w-sm">
+                      Não foi possível exibir o PDF embutido.
+                    </p>
+                  </div>
+                </object>
+              </div>
+            </div>
+          ) : (
+            // Se não houver nem imagens nem PDF
+            <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-3 px-4">
+              <p className="text-sm font-medium text-slate-700">
+                Nenhum conteúdo de leitura configurado para este livro.
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm text-center">
+                Adicione páginas de leitura (imagens jpg) ou um PDF para este
+                título.
+              </p>
+            </div>
+          )}
+
+          {/* Rodapé da página de leitura */}
+          <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500 uppercase tracking-[0.21em]">
+            <span>Modo de leitura</span>
+            {book.collection && <span>{book.collection}</span>}
           </div>
         </div>
       </main>

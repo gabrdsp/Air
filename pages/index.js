@@ -30,7 +30,7 @@ function AirApp() {
 
   // --- ESTADOS DE SESSÃO / UI ---
   const [currentUser, setCurrentUser] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'home', 'detail', 'reader', 'profile'
+  const [view, setView] = useState('login'); // 'login', 'home', 'collections', 'detail', 'reader', 'profile'
   const [selectedBook, setSelectedBook] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -181,7 +181,7 @@ function AirApp() {
     updatedUser.stats = {
       ...updatedUser.stats,
       booksReadYear: updatedUser.stats.booksReadYear + 1,
-      pagesRead: updatedUser.stats.pagesRead, // se quiser somar algo fixo, pode mudar aqui
+      pagesRead: updatedUser.stats.pagesRead,
       totalTime: updatedUser.stats.totalTime + 120,
     };
 
@@ -200,7 +200,6 @@ function AirApp() {
     );
     setCurrentUser(updatedUser);
 
-    // Após concluir leitura, volta para a página de detalhes (para permitir avaliar)
     setView('detail');
   };
 
@@ -228,9 +227,7 @@ function AirApp() {
 
   const handleRateBook = (bookId, rating) => {
     setBooks((prevBooks) =>
-      prevBooks.map((b) =>
-        b.id === bookId ? { ...b, rating } : b
-      )
+      prevBooks.map((b) => (b.id === bookId ? { ...b, rating } : b))
     );
     setSelectedBook((prev) =>
       prev && prev.id === bookId ? { ...prev, rating } : prev
@@ -264,7 +261,7 @@ function AirApp() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  // --- FILTRO ---
+  // --- FILTRO / LISTAGENS ---
 
   const uniqueGenres = Array.from(
     new Set(books.flatMap((b) => b.genres || []))
@@ -278,6 +275,15 @@ function AirApp() {
       filter === 'All' || (b.genres && b.genres.includes(filter));
     return matchSearch && matchGenre;
   });
+
+  // Collections (usando campo "collection" dos livros)
+  const collectionsMap = books.reduce((acc, b) => {
+    if (!b.collection) return acc;
+    if (!acc[b.collection]) acc[b.collection] = [];
+    acc[b.collection].push(b);
+    return acc;
+  }, {});
+  const collectionNames = Object.keys(collectionsMap);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -338,6 +344,7 @@ function AirApp() {
         onReadNotifications={markNotificationsRead}
         isAdmin={isAdmin}
         onOpenNotifyModal={() => setNotifModalOpen(true)}
+        currentView={view} // 🆕 para saber qual aba está ativa
       />
 
       <div className="flex max-w-[1600px] mx-auto pt-6">
@@ -352,7 +359,7 @@ function AirApp() {
         />
 
         <main className="flex-1 lg:ml-64 px-6 pb-10 w-full">
-          {/* HOME */}
+          {/* HOME (Library) */}
           {view === 'home' && (
             <>
               {/* Banner Top Pick */}
@@ -427,6 +434,46 @@ function AirApp() {
                 ))}
               </div>
             </>
+          )}
+
+          {/* COLLECTIONS */}
+          {view === 'collections' && (
+            <div className="space-y-8">
+              <h2 className="text-lg font-bold text-slate-900 mb-2">
+                Collections
+              </h2>
+              {collectionNames.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Nenhuma coleção cadastrada ainda.
+                </p>
+              ) : (
+                collectionNames.map((name) => (
+                  <section key={name} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-bold text-slate-900">
+                        {name}
+                      </h3>
+                      <span className="text-xs text-slate-500">
+                        {collectionsMap[name].length}{' '}
+                        {collectionsMap[name].length === 1 ? 'book' : 'books'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-5 gap-y-8">
+                      {collectionsMap[name].map((book) => (
+                        <BookGridItem
+                          key={book.id}
+                          book={book}
+                          onClick={(b) => {
+                            setSelectedBook(b);
+                            setView('detail');
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))
+              )}
+            </div>
           )}
 
           {/* DETALHE DO LIVRO */}
