@@ -7,11 +7,13 @@ export const DEFAULT_BOOKS = [
     genres: ["HQ", "Legend of Korra"],
     desc: "Primeiro volume de Guerras Territoriais, acompanhando Korra, Asami e as tensões políticas após o fim da série.",
     pages: 72,
-    cover: "/covers/guerras territoriais.jpg",
+    // CORREÇÃO: Removida a barra inicial (/) para ser resolvida corretamente pelo assetPrefix do Next.js
+    cover: "covers/guerras territoriais.jpg",
     status: "reading",
     pageImages: Array.from(
       { length: 72 },
-      (_, index) => `/img/GuerrasTerritoriais/1/gt (${index}).jpg`
+      // CORREÇÃO: Removida a barra inicial (/)
+      (_, index) => `img/GuerrasTerritoriais/1/gt (${index}).jpg`
     )
   },
 ];
@@ -29,12 +31,25 @@ export const DEFAULT_USERS = [
     weeklyGoal: { current: 0, target: 5 },
     history: [],
     favorites: []
+  },
+  {
+    id: 'user1',
+    username: "leitor",
+    password: "123",
+    name: "Leitor Padrão",
+    role: "user",
+    avatar: "https://placehold.co/150x150/f97316/FFF?text=User",
+    bio: "Apenas um leitor.",
+    stats: { booksReadYear: 1, pagesRead: 72, currentStreak: 5, totalTime: 3600 },
+    weeklyGoal: { current: 3, target: 10 },
+    history: [1],
+    favorites: [1]
   }
 ];
 
 export const DEFAULT_TOP_PICK = {
   id: 1,
-  bannerTitle: "The Legends of Korra",
-  bannerDesc: "Korra e Asami viajam pelo Mundo Espiritual!",
-  bannerCover: "/covers/guerras territoriais.jpg"
+  bannerTitle: "Foco na Coleção",
+  bannerDesc: "Leia o primeiro volume da saga Guerra Territoriais hoje!",
+  coverUrl: "https://placehold.co/800x200/4f46e5/FFF?text=DESTAQUE",
 };
