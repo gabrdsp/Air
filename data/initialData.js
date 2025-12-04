@@ -8,12 +8,12 @@ export const DEFAULT_BOOKS = [
     desc: "Primeiro volume de Guerras Territoriais, acompanhando Korra, Asami e as tensões políticas após o fim da série.",
     pages: 72,
     // CORREÇÃO: Removida a barra inicial (/) para ser resolvida corretamente pelo assetPrefix do Next.js
-    cover: "covers/guerras territoriais.jpg",
+    cover: "covers/guerras-territoriais.jpg",
     status: "reading",
     pageImages: Array.from(
       { length: 72 },
       // CORREÇÃO: Removida a barra inicial (/)
-      (_, index) => `img/GuerrasTerritoriais/1/gt (${index}).jpg`
+      (_, index) => `img/guerras-territoriais/1/gt(${index}).jpg`
     )
   },
 ];
@@ -35,7 +35,7 @@ export const DEFAULT_USERS = [
   {
     id: 'user1',
     username: "leitor",
-    password: "123",
+    password: "12345",
     name: "Leitor Padrão",
     role: "user",
     avatar: "https://placehold.co/150x150/f97316/FFF?text=User",
