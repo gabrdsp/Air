@@ -13,7 +13,7 @@ export const DEFAULT_BOOKS = [
     pageImages: Array.from(
       { length: 72 },
       // CORREÇÃO: Removida a barra inicial (/)
-      (_, index) => `img/guerras-territoriais/1/gt(${index}).jpg`
+      (_, index) => `img/guerras-territoriais/1/gt-${index}.jpg`
     )
   },
 ];
